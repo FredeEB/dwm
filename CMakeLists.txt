@@ -26,6 +26,7 @@ target_link_libraries(dwm
   X11::Xft
   X11::Xinerama)
 
+target_compile_options(dwm PUBLIC -Wall -Wextra -Wno-deprecated-declarations)
 target_compile_definitions(dwm PUBLIC XINERAMA)
 
 install(TARGETS dwm)
