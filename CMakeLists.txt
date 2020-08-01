@@ -30,3 +30,4 @@ target_compile_options(dwm PUBLIC -Wall -Wextra -Wno-deprecated-declarations)
 target_compile_definitions(dwm PUBLIC XINERAMA)
 
 install(TARGETS dwm)
+install(FILES dwm.desktop DESTINATION /usr/share/xsessions)
