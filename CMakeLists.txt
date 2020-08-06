@@ -31,3 +31,4 @@ target_compile_definitions(dwm PUBLIC XINERAMA)
 
 install(TARGETS dwm)
 install(FILES dwm.desktop DESTINATION /usr/share/xsessions)
+install(PROGRAMS autostart.sh DESTINATION /etc/dwm)

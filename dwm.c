@@ -1548,22 +1548,10 @@ run(void)
 void
 runautostart(void)
 {
-	char const * home = getenv("HOME");
-	if (home == NULL) return;
-
-	char const * config = ".config/dwm/autostart.sh";
-	char * file = calloc(sizeof(char), strlen(home) + strlen(config) + 2);
-
-	if(sprintf(file, "%s/%s", home, config) < 0){
-		printf("failed to create commandstring: %s", file);
-		free(file);
-		return;
-	}
+	char const * file = "/etc/dwm/autostart.sh";
 
 	if(access(file, F_OK) != -1)
 	    system(file);
-
-	free(file);
 }
 
 void
