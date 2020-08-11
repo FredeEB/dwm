@@ -15,6 +15,9 @@ add_executable(dwm
   drw.c
   util.c)
 
+add_executable(dwm-msg
+  dwm-msg.c)
+
 # get dwm version from git tag
 execute_process(COMMAND "git describe --abbrev=0 --tags | sed -E 's/\n//'" OUTPUT_VARIABLE GIT_TAG)
 configure_file(version.h.in ${PROJECT_SOURCE_DIR}/version.h)
@@ -24,11 +27,18 @@ target_link_libraries(dwm
   Freetype::Freetype
   Fontconfig::Fontconfig
   X11::Xft
-  X11::Xinerama)
+  X11::Xinerama
+  )
+
+target_include_directories(dwm PUBLIC /usr/include/yajl)
+target_link_options(dwm PUBLIC -lyajl)
+
+target_include_directories(dwm-msg PUBLIC /usr/include/yajl)
+target_link_options(dwm-msg PUBLIC -lyajl)
 
 target_compile_options(dwm PUBLIC -Wall -Wextra -Wno-deprecated-declarations)
 target_compile_definitions(dwm PUBLIC XINERAMA)
 
-install(TARGETS dwm)
+install(TARGETS dwm dwm-msg)
 install(FILES dwm.desktop DESTINATION /usr/share/xsessions)
 install(PROGRAMS autostart.sh DESTINATION /etc/dwm)
