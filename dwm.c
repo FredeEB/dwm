@@ -20,6 +20,7 @@
  *
  * To understand everything else, start reading main().
  */
+#include <dirent.h>
 #include <errno.h>
 #include <locale.h>
 #include <signal.h>
@@ -1714,10 +1715,32 @@ run(void)
 void
 runautostart(void)
 {
-	char const * file = "/etc/dwm/autostart.sh";
+	char const *system_config = "/etc/dwm/autostart.sh";
 
-	if(access(file, F_OK) != -1)
-	    system(file);
+	if (access(system_config, F_OK) != -1)
+		system(system_config);
+
+	char *home = getenv("HOME");
+	char const * user_config_suffix = "/.config/dwm";
+	char * const user_config = calloc(strlen(home) + strlen(user_config_suffix) + 256, sizeof(char));
+	sprintf(user_config, "%s%s", home, user_config_suffix);
+
+	DIR * d;
+	struct dirent * dir_file;
+
+	d = opendir(user_config);
+
+	if(d){
+		while ((dir_file = readdir(d)) != NULL){
+			if(dir_file->d_type == DT_REG){
+				sprintf(user_config, "%s%s/%s", home, user_config_suffix, dir_file->d_name);
+				system(user_config);
+			}
+		}
+		closedir(d);
+	}
+
+	free(user_config);
 }
 
 void
