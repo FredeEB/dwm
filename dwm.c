@@ -387,6 +387,7 @@ static const char *termcmd[]  = { "alacritty", NULL };
 static const char *browsercmd[]  = { "firefox", NULL };
 static const char *emacscmd[] = { "emacsclient", "-c", NULL };
 static const char *lockcmd[] = { "betterlockscreen", "-l", NULL };
+static const char *zealcmd[] = { "zeal" , NULL};
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
@@ -395,6 +396,7 @@ static Key keys[] = {
 	{ MODKEY,                       XK_b,      spawn,          {.v = browsercmd } },
 	{ MODKEY,                       XK_q,      spawn,          {.v = emacscmd } },
 	{ MODKEY|ShiftMask,             XK_p,      spawn,          {.v = lockcmd } },
+	{ MODKEY,                       XK_z,      spawn,          {.v = zealcmd } },
 	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
 	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
 	{ MODKEY,                       XK_u,      incnmaster,     {.i = +1 } },
