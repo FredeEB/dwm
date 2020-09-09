@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 
 # set standard
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 # find dependencies
 find_package(Freetype REQUIRED)
