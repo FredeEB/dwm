@@ -1,0 +1,20 @@
+---
+
+Language:        Cpp
+BasedOnStyle:    Google
+AlignOperands:   false
+BreakBeforeBinaryOperators: NonAssignment
+SortIncludes:    false
+SpacesBeforeTrailingComments: 1
+AccessModifierOffset: -4
+IndentWidth: 4
+ContinuationIndentWidth: 8
+ConstructorInitializerIndentWidth: 8
+IndentCaseLabels: false
+ColumnLimit: 140
+
+# The following can be optionally enabled.
+#BreakConstructorInitializersBeforeComma: true
+#ConstructorInitializerAllOnOneLineOrOnePerLine: false
+
+...
