@@ -1,11 +1,11 @@
-#include <ctype.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cctype>
+#include <cerrno>
+#include <cinttypes>
+#include <cstdarg>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -108,7 +108,7 @@ static int recv_message(uint8_t *msg_type, uint32_t *reply_size, uint8_t **reply
     memcpy(msg_type, walk, sizeof(uint8_t));
     walk += sizeof(uint8_t);
 
-    (*reply) = malloc(*reply_size);
+    (*reply) = static_cast<uint8_t *>(malloc(*reply_size));
 
     // Extract payload
     read_bytes = 0;
@@ -185,7 +185,7 @@ static void connect_to_socket() {
 }
 
 static int send_message(IPCMessageType msg_type, uint32_t msg_size, uint8_t *msg) {
-    dwm_ipc_header_t header = {.magic = IPC_MAGIC_ARR, .size = msg_size, .type = msg_type};
+    dwm_ipc_header_t header = {.magic = IPC_MAGIC_ARR, .size = msg_size, .type = static_cast<uint8_t>(msg_type)};
 
     size_t header_size = sizeof(dwm_ipc_header_t);
     size_t total_size = header_size + msg_size;

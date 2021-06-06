@@ -1,4 +1,7 @@
-/* See LICENSE file for copyright and license details. */
+#ifndef UTIL_H
+#define UTIL_H
+
+#include <cstddef>
 
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
@@ -16,3 +19,5 @@ int normalizepath(const char *path, char **normal);
 int mkdirp(const char *path);
 int parentdir(const char *path, char **parent);
 int nullterminate(char **str, size_t *len);
+
+#endif /* UTIL_H */

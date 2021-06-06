@@ -27,13 +27,13 @@
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
 #include <dirent.h>
-#include <errno.h>
-#include <locale.h>
-#include <signal.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cerrno>
+#include <clocale>
+#include <csignal>
+#include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <sys/epoll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -44,9 +44,9 @@
 #endif /* XINERAMA */
 #include <X11/Xft/Xft.h>
 
-#include "drw.h"
-#include "util.h"
-#include "version.h"
+#include "drw.hpp"
+#include "util.hpp"
+#include "version.hpp"
 
 /* macros */
 #define BUTTONMASK (ButtonPressMask | ButtonReleaseMask)
@@ -107,9 +107,8 @@ typedef struct {
     const Arg arg;
 } Button;
 
-typedef struct Monitor Monitor;
-typedef struct Client Client;
-struct Client {
+class Client {
+public:
     char name[256];
     float mina, maxa;
     int x, y, w, h;
@@ -166,7 +165,7 @@ struct Monitor {
 };
 
 typedef struct {
-    const char *class;
+    const char *classname;
     const char *instance;
     const char *title;
     unsigned int tags;
@@ -185,6 +184,7 @@ static void buttonpress(XEvent *e);
 static void checkotherwm(void);
 static void cleanup(void);
 static void cleanupmon(Monitor *mon);
+static void col(Monitor *mon);
 static void clientmessage(XEvent *e);
 static void configure(Client *c);
 static void configurenotify(XEvent *e);
@@ -273,7 +273,7 @@ static void updatewmhints(Client *c);
 static void view(const Arg *arg);
 static Client *wintoclient(Window w);
 static Monitor *wintomon(Window w);
-static int wmclasscontains(Window win, const char *class, const char *name);
+static int wmclasscontains(Window win, const char *classname, const char *name);
 static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
@@ -319,13 +319,13 @@ static Drw *drw;
 static Monitor *mons, *selmon, *lastselmon;
 static Window root, wmcheckwin;
 
-#include "ipc.h"
+#include "ipc.hpp"
 
 /* configuration, allows nested code to access above variables */
 
 #ifdef VERSION
 #include "IPCClient.c"
-#include "ipc.c"
+#include "ipc.cpp"
 #include "yajl_dumps.c"
 #endif
 
@@ -334,25 +334,25 @@ static Window root, wmcheckwin;
 /* appearance */
 static const unsigned int borderpx = 0; /* border pixel of windows */
 static const unsigned int gappx = 10;
-static const unsigned int snap = 32;        /* snap pixel */
-static const int showbar = 1;               /* 0 means no bar */
-static const int topbar = 1;                /* 0 means bottom bar */
-static const int usealtbar = 1;             /* 1 means use non-dwm status bar */
-static const char *altbarclass = "Polybar"; /* Alternate bar class name */
-static const char *alttrayname = "tray";    /* Polybar tray instance name */
-static const char *fonts[] = {"Iosevka Nerd Font:size=13"};
+static const unsigned int snap = 32;              /* snap pixel */
+static const int showbar = 1;                     /* 0 means no bar */
+static const int topbar = 1;                      /* 0 means bottom bar */
+static const int usealtbar = 1;                   /* 1 means use non-dwm status bar */
+static const char *const altbarclass = "Polybar"; /* Alternate bar class name */
+static const char *const alttrayname = "tray";    /* Polybar tray instance name */
+static const char *const fonts[] = {"Iosevka Nerd Font:size=13"};
 static const char col_gray1[] = "#282936";
 static const char col_gray2[] = "#bd93f9";
 static const char col_gray3[] = "#f8f8f2";
 static const char col_gray4[] = "#eeeeee";
-static const char *colors[][3] = {
+static const char *const colors[][3] = {
         /*               fg         bg         border   */
         [SchemeNorm] = {col_gray3, col_gray1, col_gray1},
         [SchemeSel] = {col_gray4, col_gray2, col_gray2},
 };
 
 /* tagging */
-static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
+static const char *const tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 
 static const Rule rules[] = {
         /* xprop(1): */
@@ -364,7 +364,7 @@ static const Rule rules[] = {
 };
 
 /* layout(s) */
-static const float mfact = 0.55;  /* factor of master area size [0.05..0.95] */
+static const float mfact = 0.55f; /* factor of master area size [0.05..0.95] */
 static const int nmaster = 1;     /* number of clients in master area */
 static const int resizehints = 1; /* 1 means respect size hints in tiled resizals */
 
@@ -373,29 +373,24 @@ static const Layout layouts[] = {
         {"[]=", tile}, /* first entry is default */
         {"><>", NULL}, /* no layout function means floating behavior */
         {"[M]", monocle},
-};
+        {"|||", col}};
 
 /* key definitions */
 #define MODKEY Mod4Mask
-#define TAGKEYS(KEY, TAG)                                                                                  \
-    {MODKEY, KEY, comboview, {.ui = 1 << TAG}}, {MODKEY | ControlMask, KEY, toggleview, {.ui = 1 << TAG}}, \
-            {MODKEY | ShiftMask, KEY, combotag, {.ui = 1 << TAG}}, {MODKEY | ControlMask | ShiftMask, KEY, toggletag, {.ui = 1 << TAG}},
-
-/* helper for spawning shell commands in the pre dwm-5.0 fashion */
-#define SHCMD(cmd)                                           \
-    {                                                        \
-        .v = (const char *[]) { "/bin/sh", "-c", cmd, NULL } \
-    }
+#define TAGKEYS(KEY, TAG)                                                                                      \
+    {MODKEY, KEY, comboview, {.ui = 1 << (TAG)}}, {MODKEY | ControlMask, KEY, toggleview, {.ui = 1 << (TAG)}}, \
+            {MODKEY | ShiftMask, KEY, combotag, {.ui = 1 << (TAG)}},                                           \
+            {MODKEY | ControlMask | ShiftMask, KEY, toggletag, {.ui = 1 << (TAG)}},
 
 /* commands */
-static const char *dmenucmd[] = {"rofi", "-show", "run", NULL};
-static const char *termcmd[] = {"alacritty", NULL};
-static const char *browsercmd[] = {"firefox", NULL};
-static const char *emacscmd[] = {"emacsclient", "-c", NULL};
-static const char *lockcmd[] = {"betterlockscreen", "-l", NULL};
-static const char *zealcmd[] = {"zeal", NULL};
+static const char *const dmenucmd[] = {"rofi", "-show", "run", NULL};
+static const char *const termcmd[] = {"alacritty", NULL};
+static const char *const browsercmd[] = {"firefox", NULL};
+static const char *const emacscmd[] = {"emacsclient", "-c", NULL};
+static const char *const lockcmd[] = {"betterlockscreen", "-l", NULL};
+static const char *const zealcmd[] = {"zeal", NULL};
 
-static Key keys[] = {
+static Key const keys[] = {
         /* modifier                     key        function        argument */
         {MODKEY, XK_d, spawn, {.v = dmenucmd}},
         {MODKEY, XK_Return, spawn, {.v = termcmd}},
@@ -407,13 +402,14 @@ static Key keys[] = {
         {MODKEY, XK_k, focusstack, {.i = -1}},
         {MODKEY, XK_u, incnmaster, {.i = +1}},
         {MODKEY, XK_i, incnmaster, {.i = -1}},
-        {MODKEY, XK_y, setmfact, {.f = -0.05}},
-        {MODKEY, XK_o, setmfact, {.f = +0.05}},
+        {MODKEY, XK_y, setmfact, {.f = -0.05f}},
+        {MODKEY, XK_o, setmfact, {.f = +0.05f}},
         {MODKEY, XK_f, zoom, {0}},
         {MODKEY | ShiftMask, XK_f, togglefullscr, {0}},
         {MODKEY | ShiftMask, XK_q, killclient, {0}},
         {MODKEY | ShiftMask, XK_t, setlayout, {.v = &layouts[0]}},
         {MODKEY | ShiftMask, XK_m, setlayout, {.v = &layouts[2]}},
+        {MODKEY | ShiftMask, XK_c, setlayout, {.v = &layouts[3]}},
         {MODKEY, XK_space, setlayout, {0}},
         {MODKEY | ShiftMask, XK_space, togglefloating, {0}},
         {MODKEY, XK_0, comboview, {.ui = ~0}},
@@ -429,7 +425,7 @@ static Key keys[] = {
 /* button definitions */
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
  * ClkClientWin, or ClkRootWin */
-static Button buttons[] = {
+static Button const buttons[] = {
         /* click                event mask      button          function argument
          */
         {ClkLtSymbol, 0, Button1, setlayout, {0}},
@@ -445,15 +441,15 @@ static Button buttons[] = {
         {ClkTagBar, MODKEY, Button3, toggletag, {0}},
 };
 
-static const char *ipcsockpath = "/tmp/dwm.sock";
-static IPCCommand ipccommands[] = {IPCCOMMAND(view, 1, {ARG_TYPE_UINT}),       IPCCOMMAND(toggleview, 1, {ARG_TYPE_UINT}),
-                                   IPCCOMMAND(tag, 1, {ARG_TYPE_UINT}),        IPCCOMMAND(toggletag, 1, {ARG_TYPE_UINT}),
-                                   IPCCOMMAND(tagmon, 1, {ARG_TYPE_UINT}),     IPCCOMMAND(focusmon, 1, {ARG_TYPE_SINT}),
-                                   IPCCOMMAND(focusstack, 1, {ARG_TYPE_SINT}), IPCCOMMAND(zoom, 1, {ARG_TYPE_NONE}),
-                                   IPCCOMMAND(spawn, 1, {ARG_TYPE_PTR}),       IPCCOMMAND(incnmaster, 1, {ARG_TYPE_SINT}),
-                                   IPCCOMMAND(killclient, 1, {ARG_TYPE_SINT}), IPCCOMMAND(togglefloating, 1, {ARG_TYPE_NONE}),
-                                   IPCCOMMAND(setmfact, 1, {ARG_TYPE_FLOAT}),  IPCCOMMAND(setlayoutsafe, 1, {ARG_TYPE_PTR}),
-                                   IPCCOMMAND(quit, 1, {ARG_TYPE_NONE})};
+static const char *const ipcsockpath = "/tmp/dwm.sock";
+static IPCCommand const ipccommands[] = {IPCCOMMAND(view, 1, {ARG_TYPE_UINT}),       IPCCOMMAND(toggleview, 1, {ARG_TYPE_UINT}),
+                                         IPCCOMMAND(tag, 1, {ARG_TYPE_UINT}),        IPCCOMMAND(toggletag, 1, {ARG_TYPE_UINT}),
+                                         IPCCOMMAND(tagmon, 1, {ARG_TYPE_UINT}),     IPCCOMMAND(focusmon, 1, {ARG_TYPE_SINT}),
+                                         IPCCOMMAND(focusstack, 1, {ARG_TYPE_SINT}), IPCCOMMAND(zoom, 1, {ARG_TYPE_NONE}),
+                                         IPCCOMMAND(spawn, 1, {ARG_TYPE_PTR}),       IPCCOMMAND(incnmaster, 1, {ARG_TYPE_SINT}),
+                                         IPCCOMMAND(killclient, 1, {ARG_TYPE_SINT}), IPCCOMMAND(togglefloating, 1, {ARG_TYPE_NONE}),
+                                         IPCCOMMAND(setmfact, 1, {ARG_TYPE_FLOAT}),  IPCCOMMAND(setlayoutsafe, 1, {ARG_TYPE_PTR}),
+                                         IPCCOMMAND(quit, 1, {ARG_TYPE_NONE})};
 
 // --------------------------------- CONFIG END --------------------------
 
@@ -616,8 +612,7 @@ void buttonpress(XEvent *e) {
     }
     if (ev->window == selmon->barwin) {
         i = x = 0;
-        do
-            x += TEXTW(tags[i]);
+        do x += TEXTW(tags[i]);
         while (ev->x >= x && ++i < LENGTH(tags));
         if (i < LENGTH(tags)) {
             click = ClkTagBar;
@@ -1480,6 +1475,7 @@ void run(void) {
     int event_count = 0;
     const int MAX_EVENTS = 10;
     struct epoll_event events[MAX_EVENTS];
+    runautostart();
 
     XSync(dpy, False);
 
@@ -1831,10 +1827,34 @@ void tagmon(const Arg *arg) {
     sendmon(selmon->sel, dirtomon(arg->i));
 }
 
+/* TODO: Make this consider gaps. Chech tile  */
+void col(Monitor *m) {
+    unsigned int i, n, h, w, x, y, mw;
+    Client *c;
+
+    for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++)
+        ;
+    if (n == 0) return;
+    if (n > m->nmaster)
+        mw = m->nmaster ? m->ww * m->mfact : 0;
+    else
+        mw = m->ww;
+    for (i = x = y = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+        if (i < m->nmaster) {
+            w = (mw - x) / (MIN(n, m->nmaster) - i);
+            resize(c, x + m->wx, m->wy, w - (2 * c->bw), m->wh - (2 * c->bw), False);
+            x += WIDTH(c);
+        } else {
+            h = (m->wh - y) / (n - i);
+            resize(c, x + m->wx, m->wy + y, m->ww - x - (2 * c->bw), h - (2 * c->bw), False);
+            y += HEIGHT(c);
+        }
+    }
+}
+
 void tile(Monitor *m) {
     unsigned int i, n, h, mw, my, ty;
     Client *c;
-
     for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++)
         ;
     if (n == 0) return;
@@ -1880,7 +1900,7 @@ void togglefullscr(const Arg *arg) {
 }
 
 void toggletag(const Arg *arg) {
-    unsigned int newtags;
+    unsigned int newtags = 0;
 
     if (!selmon->sel) return;
     newtags = selmon->sel->tags ^ (arg->ui & TAGMASK);
@@ -1959,8 +1979,8 @@ void unmanagetray(Window w) {
 }
 
 void unmapnotify(XEvent *e) {
-    Client *c;
-    Monitor *m;
+    Client *c = NULL;
+    Monitor *m = NULL;
     XUnmapEvent *ev = &e->xunmap;
 
     if ((c = wintoclient(ev->window))) {
@@ -1977,7 +1997,7 @@ void unmapnotify(XEvent *e) {
 void updatebars(void) {
     if (usealtbar) return;
 
-    Monitor *m;
+    Monitor *m = NULL;
     XSetWindowAttributes wa = {
             .override_redirect = True, .background_pixmap = ParentRelative, .event_mask = ButtonPressMask | ExposureMask};
     XClassHint ch = {"dwm", "dwm"};
@@ -2003,8 +2023,8 @@ void updatebarpos(Monitor *m) {
 }
 
 void updateclientlist() {
-    Client *c;
-    Monitor *m;
+    Client *c = NULL;
+    Monitor *m = NULL;
 
     XDeleteProperty(dpy, root, netatom[NetClientList]);
     for (m = mons; m; m = m->next)
@@ -2017,9 +2037,9 @@ int updategeom(void) {
 
 #ifdef XINERAMA
     if (XineramaIsActive(dpy)) {
-        int i, j, n, nn;
-        Client *c;
-        Monitor *m;
+        int i = 0, j = 0, n = 0, nn = 0;
+        Client *c = NULL;
+        Monitor *m = NULL;
         XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
         XineramaScreenInfo *unique = NULL;
 
@@ -2087,8 +2107,8 @@ int updategeom(void) {
 }
 
 void updatenumlockmask(void) {
-    unsigned int i, j;
-    XModifierKeymap *modmap;
+    unsigned int i = 0, j = 0;
+    XModifierKeymap *modmap = NULL;
 
     numlockmask = 0;
     modmap = XGetModifierMapping(dpy);
@@ -2099,7 +2119,7 @@ void updatenumlockmask(void) {
 }
 
 void updatesizehints(Client *c) {
-    long msize;
+    long msize = 0;
     XSizeHints size;
 
     if (!XGetWMNormalHints(dpy, c->win, &size, &msize)) /* size is uninitialized, ensure that size.flags aren't used */
@@ -2134,7 +2154,7 @@ void updatesizehints(Client *c) {
         c->mina = (float)size.min_aspect.y / size.min_aspect.x;
         c->maxa = (float)size.max_aspect.x / size.max_aspect.y;
     } else
-        c->maxa = c->mina = 0.0;
+        c->maxa = c->mina = 0.0f;
     c->isfixed = (c->maxw && c->maxh && c->maxw == c->minw && c->maxh == c->minh);
 }
 
@@ -2165,7 +2185,7 @@ void updatewindowtype(Client *c) {
 }
 
 void updatewmhints(Client *c) {
-    XWMHints *wmh;
+    XWMHints *wmh = NULL;
 
     if ((wmh = XGetWMHints(dpy, c->win))) {
         if (c == selmon->sel && wmh->flags & XUrgencyHint) {
@@ -2190,8 +2210,8 @@ void view(const Arg *arg) {
 }
 
 Client *wintoclient(Window w) {
-    Client *c;
-    Monitor *m;
+    Client *c = NULL;
+    Monitor *m = NULL;
 
     for (m = mons; m; m = m->next)
         for (c = m->clients; c; c = c->next)
@@ -2200,9 +2220,9 @@ Client *wintoclient(Window w) {
 }
 
 Monitor *wintomon(Window w) {
-    int x, y;
-    Client *c;
-    Monitor *m;
+    int x = 0, y = 0;
+    Client *c = NULL;
+    Monitor *m = NULL;
 
     if (w == root && getrootptr(&x, &y)) return recttomon(x, y, 1, 1);
     for (m = mons; m; m = m->next)
@@ -2275,7 +2295,6 @@ int main(int argc, char *argv[]) {
     if (pledge("stdio rpath proc exec", NULL) == -1) die("pledge");
 #endif /* __OpenBSD__ */
     scan();
-    runautostart();
     run();
     cleanup();
     XCloseDisplay(dpy);

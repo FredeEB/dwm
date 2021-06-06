@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-#include "util.h"
+#include "util.hpp"
 
 void *ecalloc(size_t nmemb, size_t size) {
     void *p;

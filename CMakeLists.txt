@@ -11,30 +11,36 @@ find_package(Fontconfig REQUIRED)
 find_package(X11 COMPONENTS Xft Xinerama REQUIRED)
 
 # the dwm executable
-add_executable(dwm
-  dwm.c
-  drw.c
-  util.c)
+add_executable(
+  dwm
+  dwm.cpp
+  drw.cpp
+  util.cpp
+)
 
-add_executable(dwm-msg
-  dwm-msg.c)
+add_executable(
+  dwm-msg
+  dwm-msg.cpp
+)
 
 # get dwm version from git tag
 execute_process(COMMAND "git describe --abbrev=0 --tags | sed -E 's/\n//'" OUTPUT_VARIABLE GIT_TAG)
-configure_file(version.h.in ${PROJECT_SOURCE_DIR}/version.h)
+configure_file(version.hpp.in ${PROJECT_SOURCE_DIR}/version.hpp)
 
 # link to libraries
-target_link_libraries(dwm
+target_link_libraries(
+  dwm
   Freetype::Freetype
   Fontconfig::Fontconfig
   X11::Xft
   X11::Xinerama
-  )
+)
 
-target_include_directories(dwm PUBLIC /usr/include/yajl)
+# TODO Remove yajl stuff
+target_include_directories(dwm PUBLIC include /usr/include/yajl)
 target_link_options(dwm PUBLIC -lyajl)
 
-target_include_directories(dwm-msg PUBLIC /usr/include/yajl)
+target_include_directories(dwm-msg PUBLIC include /usr/include/yajl)
 target_link_options(dwm-msg PUBLIC -lyajl)
 
 target_compile_options(dwm PUBLIC -Wall -Wextra -Wno-deprecated-declarations)

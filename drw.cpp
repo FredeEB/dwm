@@ -1,12 +1,14 @@
 /* See LICENSE file for copyright and license details. */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <memory>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <X11/Xlib.h>
 #include <X11/Xft/Xft.h>
+#include <fontconfig/fontconfig.h>
 
-#include "drw.h"
-#include "util.h"
+#include <drw.hpp>
+#include "util.hpp"
 
 #define UTF_INVALID 0xFFFD
 #define UTF_SIZ 4
@@ -48,8 +50,8 @@ static size_t utf8decode(const char *c, long *u, size_t clen) {
     return len;
 }
 
-Drw *drw_create(Display *dpy, int screen, Window root, unsigned int w, unsigned int h) {
-    Drw *drw = ecalloc(1, sizeof(Drw));
+std::unique_ptr<Drw> drw_create(Display *dpy, int screen, Window root, unsigned int w, unsigned int h) {
+    auto drw = std::make_unique<Drw>();
 
     drw->dpy = dpy;
     drw->screen = screen;
@@ -79,11 +81,18 @@ void drw_free(Drw *drw) {
     free(drw);
 }
 
+class FontCPP {
+public:
+    FontCPP(Drw *drw, const char *fontname, FcPattern *fontpattern) {}
+
+private:
+    std::unique_ptr<XftFont> xfont;
+};
+
 /* This function is an implementation detail. Library users should use
  * drw_fontset_create instead.
  */
-static Fnt *xfont_create(Drw *drw, const char *fontname, FcPattern *fontpattern) {
-    Fnt *font;
+static Font *xfont_create(Drw *drw, const char *fontname, FcPattern *fontpattern) {
     XftFont *xfont = NULL;
     FcPattern *pattern = NULL;
 
@@ -124,7 +133,7 @@ static Fnt *xfont_create(Drw *drw, const char *fontname, FcPattern *fontpattern)
         return NULL;
     }
 
-    font = ecalloc(1, sizeof(Fnt));
+    auto font = std::make_unique<Font>();
     font->xfont = xfont;
     font->pattern = pattern;
     font->h = xfont->ascent + xfont->descent;
@@ -133,15 +142,15 @@ static Fnt *xfont_create(Drw *drw, const char *fontname, FcPattern *fontpattern)
     return font;
 }
 
-static void xfont_free(Fnt *font) {
+static void xfont_free(Font *font) {
     if (!font) return;
     if (font->pattern) FcPatternDestroy(font->pattern);
     XftFontClose(font->dpy, font->xfont);
     free(font);
 }
 
-Fnt *drw_fontset_create(Drw *drw, const char *fonts[], size_t fontcount) {
-    Fnt *cur, *ret = NULL;
+Font *drw_fontset_create(Drw *drw, const char *fonts[], size_t fontcount) {
+    Font *cur, *ret = NULL;
     size_t i;
 
     if (!drw || !fonts) return NULL;
@@ -155,7 +164,7 @@ Fnt *drw_fontset_create(Drw *drw, const char *fonts[], size_t fontcount) {
     return (drw->fonts = ret);
 }
 
-void drw_fontset_free(Fnt *font) {
+void drw_fontset_free(Font *font) {
     if (font) {
         drw_fontset_free(font->next);
         xfont_free(font);
@@ -182,7 +191,7 @@ Clr *drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount) {
     return ret;
 }
 
-void drw_setfontset(Drw *drw, Fnt *set) {
+void drw_setfontset(Drw *drw, Font *set) {
     if (drw) drw->fonts = set;
 }
 
@@ -204,7 +213,7 @@ int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned in
     int ty;
     unsigned int ew;
     XftDraw *d = NULL;
-    Fnt *usedfont, *curfont, *nextfont;
+    Font *usedfont, *curfont, *nextfont;
     size_t i, len;
     int utf8strlen, utf8charlen, render = x || y || w || h;
     long utf8codepoint = 0;
@@ -334,7 +343,7 @@ unsigned int drw_fontset_getwidth(Drw *drw, const char *text) {
     return drw_text(drw, 0, 0, 0, 0, 0, text, 0);
 }
 
-void drw_font_getexts(Fnt *font, const char *text, unsigned int len, unsigned int *w, unsigned int *h) {
+void drw_font_getexts(Font *font, const char *text, unsigned int len, unsigned int *w, unsigned int *h) {
     XGlyphInfo ext;
 
     if (!font || !text) return;
@@ -344,14 +353,14 @@ void drw_font_getexts(Fnt *font, const char *text, unsigned int len, unsigned in
     if (h) *h = font->h;
 }
 
-Cur *drw_cur_create(Drw *drw, int shape) {
-    Cur *cur;
+std::unique_ptr<Cur> drw_cur_create(Drw *drw, int shape) {
+    if (!drw) {
+        auto cur = std::make_unique<Cur>();
 
-    if (!drw || !(cur = ecalloc(1, sizeof(Cur)))) return NULL;
-
-    cur->cursor = XCreateFontCursor(drw->dpy, shape);
-
-    return cur;
+        cur->cursor = XCreateFontCursor(drw->dpy, shape);
+        return cur;
+    }
+    return {};
 }
 
 void drw_cur_free(Drw *drw, Cur *cursor) {

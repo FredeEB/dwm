@@ -1,10 +1,10 @@
-#include "ipc.h"
-#include <errno.h>
+#include <ipc.hpp>
+#include <cerrno>
 #include <fcntl.h>
-#include <inttypes.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cinttypes>
+#include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -12,7 +12,7 @@
 #include <yajl/yajl_gen.h>
 #include <yajl/yajl_tree.h>
 
-#include "util.h"
+#include <util.hpp>
 #include "yajl_dumps.h"
 
 static struct sockaddr_un sockaddr;

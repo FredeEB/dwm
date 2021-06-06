@@ -1,0 +1,4 @@
+* DWM C++ Port
+** TODO abolish yajl
+   yajl is a json library for C, so we should use jsoncpp/nlohmann-json for better intergration with c++.
+
