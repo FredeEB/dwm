@@ -20,19 +20,17 @@ typedef enum IPCMessageType {
     IPC_TYPE_RUN_COMMAND = 0,
     IPC_TYPE_GET_MONITORS = 1,
     IPC_TYPE_GET_TAGS = 2,
-    IPC_TYPE_GET_LAYOUTS = 3,
-    IPC_TYPE_GET_DWM_CLIENT = 4,
-    IPC_TYPE_SUBSCRIBE = 5,
-    IPC_TYPE_EVENT = 6
+    IPC_TYPE_GET_DWM_CLIENT = 3,
+    IPC_TYPE_SUBSCRIBE = 4,
+    IPC_TYPE_EVENT = 5
 } IPCMessageType;
 
 typedef enum IPCEvent {
     IPC_EVENT_TAG_CHANGE = 1 << 0,
     IPC_EVENT_CLIENT_FOCUS_CHANGE = 1 << 1,
-    IPC_EVENT_LAYOUT_CHANGE = 1 << 2,
-    IPC_EVENT_MONITOR_FOCUS_CHANGE = 1 << 3,
-    IPC_EVENT_FOCUSED_TITLE_CHANGE = 1 << 4,
-    IPC_EVENT_FOCUSED_STATE_CHANGE = 1 << 5
+    IPC_EVENT_MONITOR_FOCUS_CHANGE = 1 << 2,
+    IPC_EVENT_FOCUSED_TITLE_CHANGE = 1 << 3,
+    IPC_EVENT_FOCUSED_STATE_CHANGE = 1 << 4
 } IPCEvent;
 
 typedef enum IPCSubscriptionAction { IPC_ACTION_UNSUBSCRIBE = 0, IPC_ACTION_SUBSCRIBE = 1 } IPCSubscriptionAction;
@@ -217,19 +215,6 @@ void ipc_tag_change_event(const int mon_num, TagState old_state, TagState new_st
 void ipc_client_focus_change_event(const int mon_num, Client *old_client, Client *new_client);
 
 /**
- * Send a layout_change_event to all subscribers. Should be called only
- * when there has been a layout change.
- *
- * @param mon_num The index of the monitor (Monitor.num property)
- * @param old_symbol The old layout symbol
- * @param old_layout Address to the old Layout
- * @param new_symbol The new (now current) layout symbol
- * @param new_layout Address to the new Layout
- */
-void ipc_layout_change_event(const int mon_num, const char *old_symbol, const Layout *old_layout, const char *new_symbol,
-                             const Layout *new_layout);
-
-/**
  * Send a monitor_focus_change_event to all subscribers. Should be called only
  * when the monitor focus changes.
  *
@@ -281,14 +266,12 @@ void ipc_send_events(Monitor *mons, Monitor **lastselmon, Monitor *selmon);
  * @param lastselmon Address of pointer to previously selected monitor
  * @param tags Array of tag names
  * @param tags_len Length of tags array
- * @param layouts Array of available layouts
- * @param layouts_len Length of layouts array
  *
  * @return 0 if event was successfully handled, -1 on any error receiving
  * or handling incoming messages or unhandled epoll event.
  */
 int ipc_handle_client_epoll_event(struct epoll_event *ev, Monitor *mons, Monitor **lastselmon, Monitor *selmon, const char *tags[],
-                                  const int tags_len, const Layout *layouts, const int layouts_len);
+                                  const int tags_len);
 
 /**
  * Handle an epoll event caused by the IPC socket. This function only handles an

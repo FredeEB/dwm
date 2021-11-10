@@ -432,8 +432,6 @@ static int ipc_event_stoi(const char *subscription, IPCEvent *event) {
         *event = IPC_EVENT_TAG_CHANGE;
     else if (strcmp(subscription, "client_focus_change_event") == 0)
         *event = IPC_EVENT_CLIENT_FOCUS_CHANGE;
-    else if (strcmp(subscription, "layout_change_event") == 0)
-        *event = IPC_EVENT_LAYOUT_CHANGE;
     else if (strcmp(subscription, "monitor_focus_change_event") == 0)
         *event = IPC_EVENT_MONITOR_FOCUS_CHANGE;
     else if (strcmp(subscription, "focused_title_change_event") == 0)
@@ -619,19 +617,6 @@ static void ipc_get_tags(IPCClient *c, const char *tags[], const int tags_len) {
     dump_tags(gen, tags, tags_len);
 
     ipc_reply_prepare_send_message(gen, c, IPC_TYPE_GET_TAGS);
-}
-
-/**
- * Called when an IPC_TYPE_GET_LAYOUTS message is received from a client. It
- * prepares a reply with a JSON array of available layouts
- */
-static void ipc_get_layouts(IPCClient *c, const Layout layouts[], const int layouts_len) {
-    yajl_gen gen;
-    ipc_reply_init_message(&gen);
-
-    dump_layouts(gen, layouts, layouts_len);
-
-    ipc_reply_prepare_send_message(gen, c, IPC_TYPE_GET_LAYOUTS);
 }
 
 /**
@@ -941,14 +926,6 @@ void ipc_client_focus_change_event(int mon_num, Client *old_client, Client *new_
     ipc_event_prepare_send_message(gen, IPC_EVENT_CLIENT_FOCUS_CHANGE);
 }
 
-void ipc_layout_change_event(const int mon_num, const char *old_symbol, const Layout *old_layout, const char *new_symbol,
-                             const Layout *new_layout) {
-    yajl_gen gen;
-    ipc_event_init_message(&gen);
-    dump_layout_change_event(gen, mon_num, old_symbol, old_layout, new_symbol, new_layout);
-    ipc_event_prepare_send_message(gen, IPC_EVENT_LAYOUT_CHANGE);
-}
-
 void ipc_monitor_focus_change_event(const int last_mon_num, const int new_mon_num) {
     yajl_gen gen;
     ipc_event_init_message(&gen);
@@ -993,12 +970,6 @@ void ipc_send_events(Monitor *mons, Monitor **lastselmon, Monitor *selmon) {
             m->lastsel = m->sel;
         }
 
-        if (strcmp(m->ltsymbol, m->lastltsymbol) != 0 || m->lastlt != m->lt[m->sellt]) {
-            ipc_layout_change_event(m->num, m->lastltsymbol, m->lastlt, m->ltsymbol, m->lt[m->sellt]);
-            strcpy(m->lastltsymbol, m->ltsymbol);
-            m->lastlt = m->lt[m->sellt];
-        }
-
         if (*lastselmon != selmon) {
             if (*lastselmon != NULL) ipc_monitor_focus_change_event((*lastselmon)->num, selmon->num);
             *lastselmon = selmon;
@@ -1021,7 +992,7 @@ void ipc_send_events(Monitor *mons, Monitor **lastselmon, Monitor *selmon) {
 }
 
 int ipc_handle_client_epoll_event(struct epoll_event *ev, Monitor *mons, Monitor **lastselmon, Monitor *selmon, const char *tags[],
-                                  const int tags_len, const Layout *layouts, const int layouts_len) {
+                                  const int tags_len) {
     int fd = ev->data.fd;
     IPCClient *c = ipc_get_client(fd);
 
@@ -1043,8 +1014,6 @@ int ipc_handle_client_epoll_event(struct epoll_event *ev, Monitor *mons, Monitor
             ipc_get_monitors(c, mons, selmon);
         else if (msg_type == IPC_TYPE_GET_TAGS)
             ipc_get_tags(c, tags, tags_len);
-        else if (msg_type == IPC_TYPE_GET_LAYOUTS)
-            ipc_get_layouts(c, layouts, layouts_len);
         else if (msg_type == IPC_TYPE_RUN_COMMAND) {
             if (ipc_run_command(c, msg) < 0) return -1;
             ipc_send_events(mons, lastselmon, selmon);

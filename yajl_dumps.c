@@ -123,17 +123,6 @@ int dump_monitor(yajl_gen gen, Monitor *mon, int is_selected) {
       )
     )
 
-    YSTR("layout"); YMAP(
-      YSTR("symbol"); YMAP(
-        YSTR("current"); YSTR(mon->ltsymbol);
-        YSTR("old"); YSTR(mon->lastltsymbol);
-      )
-      YSTR("address"); YMAP(
-        YSTR("current"); YINT((uintptr_t)mon->lt[mon->sellt]);
-        YSTR("old"); YINT((uintptr_t)mon->lt[mon->sellt ^ 1]);
-      )
-    )
-
     YSTR("bar"); YMAP(
       YSTR("y"); YINT(mon->by);
       YSTR("is_shown"); YBOOL(mon->showbar);
@@ -152,21 +141,6 @@ int dump_monitors(yajl_gen gen, Monitor *mons, Monitor *selmon) {
         dump_monitor(gen, mon, 1);
       else
         dump_monitor(gen, mon, 0);
-    }
-  )
-
-    return 0;
-}
-
-int dump_layouts(yajl_gen gen, const Layout layouts[], const int layouts_len) {
-  YARR(
-    for (int i = 0; i < layouts_len; i++) {
-      YMAP(
-        // Check for a NULL pointer. The cycle layouts patch adds an entry at
-        // the end of the layouts array with a NULL pointer for the symbol
-        YSTR("symbol"); YSTR((layouts[i].symbol ? layouts[i].symbol : ""));
-        YSTR("address"); YINT((uintptr_t)(layouts + i));
-      )
     }
   )
 
@@ -201,21 +175,6 @@ int dump_client_focus_change_event(yajl_gen gen, Client *old_client, Client *new
       YSTR("monitor_number"); YINT(mon_num);
       YSTR("old_win_id"); old_client == NULL ? YNULL() : YINT(old_client->win);
       YSTR("new_win_id"); new_client == NULL ? YNULL() : YINT(new_client->win);
-    )
-  )
-
-    return 0;
-}
-
-int dump_layout_change_event(yajl_gen gen, const int mon_num, const char *old_symbol, const Layout *old_layout, const char *new_symbol,
-                             const Layout *new_layout) {
-  YMAP(
-    YSTR("layout_change_event"); YMAP(
-      YSTR("monitor_number"); YINT(mon_num);
-      YSTR("old_symbol"); YSTR(old_symbol);
-      YSTR("old_address"); YINT((uintptr_t)old_layout);
-      YSTR("new_symbol"); YSTR(new_symbol);
-      YSTR("new_address"); YINT((uintptr_t)new_layout);
     )
   )
 
