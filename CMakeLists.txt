@@ -1,10 +1,7 @@
-project(dwm)
 cmake_minimum_required(VERSION 3.18)
+project(dwm)
 
-# set standard
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # find dependencies
 find_package(Freetype REQUIRED)
@@ -33,6 +30,7 @@ execute_process(
     ECHO_OUTPUT_VARIABLE)
 
 target_compile_options(dwm PUBLIC -Wall -Wextra -Wno-deprecated-declarations)
+target_compile_features(dwm PUBLIC cxx_std_20 c_std_17)
 target_compile_definitions(dwm 
     PUBLIC "-DXINERAMA"
     PUBLIC "-DVERSION=\"${VERSION}\""
