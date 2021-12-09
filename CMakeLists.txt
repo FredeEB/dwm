@@ -17,10 +17,6 @@ add_executable(dwm
   drw.c
   util.c)
 
-# get dwm version from git tag
-execute_process(COMMAND "git describe --abbrev=0 --tags | sed -E 's/\n//'" OUTPUT_VARIABLE GIT_TAG)
-configure_file(version.h.in ${PROJECT_SOURCE_DIR}/version.h)
-
 # link to libraries
 target_link_libraries(dwm
   Freetype::Freetype
@@ -29,8 +25,18 @@ target_link_libraries(dwm
   X11::Xinerama
   )
 
+# get dwm version from git tag
+execute_process(
+    COMMAND git log -1 --format=%h
+    OUTPUT_VARIABLE VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ECHO_OUTPUT_VARIABLE)
+
 target_compile_options(dwm PUBLIC -Wall -Wextra -Wno-deprecated-declarations)
-target_compile_definitions(dwm PUBLIC XINERAMA)
+target_compile_definitions(dwm 
+    PUBLIC "-DXINERAMA"
+    PUBLIC "-DVERSION=\"${VERSION}\""
+    )
 
 install(TARGETS dwm)
 install(FILES dwm.desktop DESTINATION /usr/share/xsessions)
