@@ -151,14 +151,14 @@ static void arrange(Monitor *m);
 static void attach(Client *c);
 static void attachstack(Client *c);
 static void buttonpress(XEvent *e);
-static void checkotherwm(void);
-static void cleanup(void);
+static void checkotherwm();
+static void cleanup();
 static void cleanupmon(Monitor *mon);
 static void clientmessage(XEvent *e);
 static void configure(Client *c);
 static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
-static Monitor *createmon(void);
+static Monitor *createmon();
 static void destroynotify(XEvent *e);
 static void detach(Client *c);
 static void detachstack(Client *c);
@@ -173,7 +173,7 @@ static int getrootptr(int *x, int *y);
 static long getstate(Window w);
 static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static void grabbuttons(Client *c, int focused);
-static void grabkeys(void);
+static void grabkeys();
 static void incnmaster(const Arg *arg);
 static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
@@ -192,16 +192,16 @@ static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
 static void restack(Monitor *m);
-static void run(void);
-static void runautostart(void);
-static void scan(void);
+static void run();
+static void runautostart();
+static void scan();
 static int sendevent(Client *c, Atom proto);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
 static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
 static void setmfact(const Arg *arg);
-static void setup(void);
+static void setup();
 static void seturgent(Client *c, int urg);
 static void showhide(Client *c);
 static void sigchld(int unused);
@@ -218,10 +218,10 @@ static void unmanagealtbar(Window w);
 static void unmanagetray(Window w);
 static void unmapnotify(XEvent *e);
 static void updatebarpos(Monitor *m);
-static void updatebars(void);
-static void updateclientlist(void);
-static int updategeom(void);
-static void updatenumlockmask(void);
+static void updatebars();
+static void updateclientlist();
+static int updategeom();
+static void updatenumlockmask();
 static void updatesizehints(Client *c);
 static void updatetitle(Client *c);
 static void updatewindowtype(Client *c);
@@ -524,7 +524,7 @@ void buttonpress(XEvent *e) {
             buttons[i].func(click == ClkTagBar && buttons[i].arg.i == 0 ? &arg : &buttons[i].arg);
 }
 
-void checkotherwm(void) {
+void checkotherwm() {
     xerrorxlib = XSetErrorHandler(xerrorstart);
     /* this causes an error if some other window manager is running */
     XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask);
@@ -533,7 +533,7 @@ void checkotherwm(void) {
     XSync(dpy, False);
 }
 
-void cleanup(void) {
+void cleanup() {
     Arg a = {.ui = ~0};
     Monitor *m;
     size_t i;
@@ -671,7 +671,7 @@ void configurerequest(XEvent *e) {
     XSync(dpy, False);
 }
 
-Monitor *createmon(void) {
+Monitor *createmon() {
     Monitor *m;
 
     m = ecalloc(1, sizeof(Monitor));
@@ -1226,7 +1226,7 @@ void restack(Monitor *m) {
         ;
 }
 
-void run(void) {
+void run() {
     XEvent ev;
 
     XSync(dpy, False);
@@ -1235,7 +1235,7 @@ void run(void) {
 			handler[ev.type](&ev); /* call handler */
 }
 
-void runautostart(void) {
+void runautostart() {
     char const *system_config = "/etc/dwm/autostart.sh";
 
     if (access(system_config, F_OK) != -1) system(system_config);
@@ -1263,7 +1263,7 @@ void runautostart(void) {
     free(user_config);
 }
 
-void scan(void) {
+void scan() {
     unsigned int i, num;
     Window d1, d2, *wins = NULL;
     XWindowAttributes wa;
@@ -1608,7 +1608,7 @@ void unmapnotify(XEvent *e) {
         unmanagetray(ev->window);
 }
 
-void updatebars(void) {
+void updatebars() {
     if (usealtbar) return;
 
     Monitor *m;
@@ -1646,7 +1646,7 @@ void updateclientlist() {
             XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend, (unsigned char *)&(c->win), 1);
 }
 
-int updategeom(void) {
+int updategeom() {
     int dirty = 0;
 
     if (XineramaIsActive(dpy)) {
@@ -1717,7 +1717,7 @@ int updategeom(void) {
     return dirty;
 }
 
-void updatenumlockmask(void) {
+void updatenumlockmask() {
     unsigned int i, j;
     XModifierKeymap *modmap;
 
