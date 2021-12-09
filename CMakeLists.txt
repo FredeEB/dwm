@@ -31,10 +31,7 @@ execute_process(
 
 target_compile_options(dwm PUBLIC -Wall -Wextra -Wno-deprecated-declarations)
 target_compile_features(dwm PUBLIC cxx_std_20 c_std_17)
-target_compile_definitions(dwm 
-    PUBLIC "-DXINERAMA"
-    PUBLIC "-DVERSION=\"${VERSION}\""
-    )
+target_compile_definitions(dwm PUBLIC "-DVERSION=\"${VERSION}\"")
 
 install(TARGETS dwm)
 install(FILES dwm.desktop DESTINATION /usr/share/xsessions)
