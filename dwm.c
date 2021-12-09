@@ -119,14 +119,11 @@ struct Monitor {
     int nmaster;
     int num;
     int by, bh;         /* bar geometry */
-    int tx, tw;         /* bar tray geometry */
     int mx, my, mw, mh; /* screen size */
     int wx, wy, ww, wh; /* window area  */
     int gappx;
     unsigned int seltags;
     unsigned int tagset[2];
-    int showbar;
-    int topbar;
     Client *clients;
     Client *sel;
     Client *stack;
@@ -218,7 +215,6 @@ static void unmanagealtbar(Window w);
 static void unmanagetray(Window w);
 static void unmapnotify(XEvent *e);
 static void updatebarpos(Monitor *m);
-static void updatebars();
 static void updateclientlist();
 static int updategeom();
 static void updatenumlockmask();
@@ -277,9 +273,6 @@ static Window root, wmcheckwin;
 static const unsigned int borderpx = 0; /* border pixel of windows */
 static const unsigned int gappx = 10;
 static const unsigned int snap = 32;        /* snap pixel */
-static const int showbar = 1;               /* 0 means no bar */
-static const int topbar = 1;                /* 0 means bottom bar */
-static const int usealtbar = 1;             /* 1 means use non-dwm status bar */
 static const char *altbarclass = "Polybar"; /* Alternate bar class name */
 /* tagging */
 static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
@@ -561,10 +554,6 @@ void cleanupmon(Monitor *mon) {
             ;
         m->next = mon->next;
     }
-    if (!usealtbar) {
-        XUnmapWindow(dpy, mon->barwin);
-        XDestroyWindow(dpy, mon->barwin);
-    }
     free(mon);
 }
 
@@ -613,7 +602,6 @@ void configurenotify(XEvent *e) {
         sh = ev->height;
         if (updategeom() || dirty) {
             drw_resize(drw, sw, bh);
-            updatebars();
             for (m = mons; m; m = m->next) {
                 for (c = m->clients; c; c = c->next)
                     if (c->isfullscreen) resizeclient(c, m->mx, m->my, m->mw, m->mh);
@@ -678,8 +666,6 @@ Monitor *createmon() {
     m->tagset[0] = m->tagset[1] = 1;
     m->mfact = mfact;
     m->nmaster = nmaster;
-    m->showbar = showbar;
-    m->topbar = topbar;
     m->bh = bh;
     m->gappx = gappx;
     return m;
@@ -1382,7 +1368,6 @@ void setup() {
     sh = DisplayHeight(dpy, screen);
     root = RootWindow(dpy, screen);
     drw = drw_create(dpy, screen, root, sw, sh);
-    bh = usealtbar ? 0 : drw->fonts->h + 2;
     updategeom();
     /* init atoms */
     utf8string = XInternAtom(dpy, "UTF8_STRING", False);
@@ -1403,8 +1388,6 @@ void setup() {
     cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
     cursor[CurResize] = drw_cur_create(drw, XC_sizing);
     cursor[CurMove] = drw_cur_create(drw, XC_fleur);
-    /* init bars */
-    updatebars();
     /* supporting window for NetWMCheck */
     wmcheckwin = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
     XChangeProperty(dpy, wmcheckwin, netatom[NetWMCheck], XA_WINDOW, 32, PropModeReplace, (unsigned char *)&wmcheckwin, 1);
@@ -1586,8 +1569,6 @@ void unmanagetray(Window w) {
     if (!m) return;
 
     m->traywin = 0;
-    m->tx = 0;
-    m->tw = 0;
     updatebarpos(m);
     arrange(m);
 }
@@ -1608,32 +1589,12 @@ void unmapnotify(XEvent *e) {
         unmanagetray(ev->window);
 }
 
-void updatebars() {
-    if (usealtbar) return;
-
-    Monitor *m;
-    XSetWindowAttributes wa = {
-            .override_redirect = True, .background_pixmap = ParentRelative, .event_mask = ButtonPressMask | ExposureMask};
-    XClassHint ch = {"dwm", "dwm"};
-    for (m = mons; m; m = m->next) {
-        if (m->barwin) continue;
-        m->barwin = XCreateWindow(dpy, root, m->wx, m->by, m->ww, bh, 0, DefaultDepth(dpy, screen), CopyFromParent,
-                                  DefaultVisual(dpy, screen), CWOverrideRedirect | CWBackPixmap | CWEventMask, &wa);
-        XDefineCursor(dpy, m->barwin, cursor[CurNormal]->cursor);
-        XMapRaised(dpy, m->barwin);
-        XSetClassHint(dpy, m->barwin, &ch);
-    }
-}
-
 void updatebarpos(Monitor *m) {
     m->wy = m->my;
     m->wh = m->mh;
-    if (m->showbar) {
-        m->wh -= m->bh;
-        m->by = m->topbar ? m->wy : m->wy + m->wh;
-        m->wy = m->topbar ? m->wy + m->bh : m->wy;
-    } else
-        m->by = -m->bh;
+    m->wh -= m->bh;
+    m->by = m->wy;
+    m->wy = m->wy + m->bh;
 }
 
 void updateclientlist() {
