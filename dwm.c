@@ -1588,17 +1588,6 @@ void tile(Monitor *m) {
         }
 }
 
-void togglebar(const Arg *arg) {
-    if (!selmon->traywin) scantray();
-
-    selmon->showbar = !selmon->showbar;
-    updatebarpos(selmon);
-    XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
-    XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, selmon->bh);
-    XMoveResizeWindow(dpy, selmon->traywin, selmon->tx, selmon->by, selmon->tw, selmon->bh);
-    arrange(selmon);
-}
-
 void togglefloating(const Arg *arg) {
     if (!selmon->sel) return;
     if (selmon->sel->isfullscreen) /* no support for fullscreen windows */
