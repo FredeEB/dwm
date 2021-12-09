@@ -1972,9 +1972,6 @@ int main(int argc, char *argv[]) {
     if (!(dpy = XOpenDisplay(NULL))) die("dwm: cannot open display");
     checkotherwm();
     setup();
-#ifdef __OpenBSD__
-    if (pledge("stdio rpath proc exec", NULL) == -1) die("pledge");
-#endif /* __OpenBSD__ */
     scan();
     runautostart();
     run();
