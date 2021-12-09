@@ -323,7 +323,7 @@ static const int resizehints = 1; /* 1 means respect size hints in tiled resizal
             {MODKEY | ShiftMask, KEY, combotag, {.ui = 1 << TAG}}, {MODKEY | ControlMask | ShiftMask, KEY, toggletag, {.ui = 1 << TAG}},
 
 /* commands */
-static const char *dmenucmd[] = {"rofi", "-show", "run", NULL};
+static const char *runnercmd[] = {"rofi", "-show", "run", NULL};
 static const char *termcmd[] = {"alacritty", NULL};
 static const char *browsercmd[] = {"firefox", NULL};
 static const char *lockcmd[] = {"betterlockscreen", "-l", NULL};
@@ -331,7 +331,7 @@ static const char *zealcmd[] = {"zeal", NULL};
 
 static Key keys[] = {
         /* modifier                     key        function        argument */
-        {MODKEY, XK_d, spawn, {.v = dmenucmd}},
+        {MODKEY, XK_d, spawn, {.v = runnercmd}},
         {MODKEY, XK_Return, spawn, {.v = termcmd}},
         {MODKEY, XK_b, spawn, {.v = browsercmd}},
         {MODKEY | ShiftMask, XK_p, spawn, {.v = lockcmd}},
