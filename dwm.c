@@ -62,7 +62,6 @@
 
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum { SchemeNorm, SchemeSel };                  /* color schemes */
 enum {
     NetSupported,
     NetWMName,
@@ -272,7 +271,6 @@ static void (*handler[LASTEvent])(XEvent *) = {[ButtonPress] = buttonpress,
 static Atom wmatom[WMLast], netatom[NetLast];
 static int running = 1;
 static Cur *cursor[CurLast];
-static Clr **scheme;
 static Display *dpy;
 static Drw *drw;
 static Monitor *mons, *selmon;
@@ -288,18 +286,6 @@ static const int showbar = 1;               /* 0 means no bar */
 static const int topbar = 1;                /* 0 means bottom bar */
 static const int usealtbar = 1;             /* 1 means use non-dwm status bar */
 static const char *altbarclass = "Polybar"; /* Alternate bar class name */
-static const char *alttrayname = "tray";    /* Polybar tray instance name */
-static const char *fonts[] = {"Iosevka Nerd Font:size=13"};
-static const char col_gray1[] = "#282936";
-static const char col_gray2[] = "#bd93f9";
-static const char col_gray3[] = "#f8f8f2";
-static const char col_gray4[] = "#eeeeee";
-static const char *colors[][3] = {
-        /*               fg         bg         border   */
-        [SchemeNorm] = {col_gray3, col_gray1, col_gray1},
-        [SchemeSel] = {col_gray4, col_gray2, col_gray2},
-};
-
 /* tagging */
 static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 
@@ -563,7 +549,6 @@ void cleanup(void) {
     XUngrabKey(dpy, AnyKey, AnyModifier, root);
     while (mons) cleanupmon(mons);
     for (i = 0; i < CurLast; i++) drw_cur_free(drw, cursor[i]);
-    for (i = 0; i < LENGTH(colors); i++) free(scheme[i]);
     XDestroyWindow(dpy, wmcheckwin);
     drw_free(drw);
     XSync(dpy, False);
@@ -781,7 +766,6 @@ void focus(Client *c) {
         detachstack(c);
         attachstack(c);
         grabbuttons(c, 1);
-        XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
         setfocus(c);
     } else {
         XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
@@ -991,7 +975,6 @@ void manage(Window w, XWindowAttributes *wa) {
 
     wc.border_width = c->bw;
     XConfigureWindow(dpy, w, CWBorderWidth, &wc);
-    XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBorder].pixel);
     configure(c); /* propagates border_width, if size doesn't change */
     updatewindowtype(c);
     updatesizehints(c);
@@ -1433,8 +1416,7 @@ void setmfact(const Arg *arg) {
     arrange(selmon);
 }
 
-void setup(void) {
-    int i;
+void setup() {
     XSetWindowAttributes wa;
     Atom utf8string;
 
@@ -1447,8 +1429,6 @@ void setup(void) {
     sh = DisplayHeight(dpy, screen);
     root = RootWindow(dpy, screen);
     drw = drw_create(dpy, screen, root, sw, sh);
-    if (!drw_fontset_create(drw, fonts, LENGTH(fonts))) die("no fonts could be loaded.");
-    lrpad = drw->fonts->h;
     bh = usealtbar ? 0 : drw->fonts->h + 2;
     updategeom();
     /* init atoms */
@@ -1470,9 +1450,6 @@ void setup(void) {
     cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
     cursor[CurResize] = drw_cur_create(drw, XC_sizing);
     cursor[CurMove] = drw_cur_create(drw, XC_fleur);
-    /* init appearance */
-    scheme = ecalloc(LENGTH(colors), sizeof(Clr *));
-    for (i = 0; i < LENGTH(colors); i++) scheme[i] = drw_scm_create(drw, colors[i], 3);
     /* init bars */
     updatebars();
     /* supporting window for NetWMCheck */
@@ -1609,7 +1586,6 @@ void toggleview(const Arg *arg) {
 void unfocus(Client *c, int setfocus) {
     if (!c) return;
     grabbuttons(c, 0);
-    XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);
     if (setfocus) {
         XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
         XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
