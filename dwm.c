@@ -46,10 +46,6 @@
 #include "drw.h"
 #include "util.h"
 
-#ifndef VERSION
-#define VERSION "dev"
-#endif
-
 /* macros */
 #define BUTTONMASK (ButtonPressMask | ButtonReleaseMask)
 #define CLEANMASK(mask) \
