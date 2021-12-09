@@ -181,7 +181,6 @@ static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
 static void manage(Window w, XWindowAttributes *wa);
 static void managealtbar(Window win, XWindowAttributes *wa);
-static void managetray(Window win, XWindowAttributes *wa);
 static void mappingnotify(XEvent *e);
 static void maprequest(XEvent *e);
 static void motionnotify(XEvent *e);
@@ -198,13 +197,11 @@ static void restack(Monitor *m);
 static void run(void);
 static void runautostart(void);
 static void scan(void);
-static void scantray(void);
 static int sendevent(Client *c, Atom proto);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
 static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
-static void setgaps(const Arg *arg);
 static void setmfact(const Arg *arg);
 static void setup(void);
 static void seturgent(Client *c, int urg);
@@ -1010,21 +1007,6 @@ void managealtbar(Window win, XWindowAttributes *wa) {
     XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend, (unsigned char *)&win, 1);
 }
 
-void managetray(Window win, XWindowAttributes *wa) {
-    Monitor *m;
-    if (!(m = recttomon(wa->x, wa->y, wa->width, wa->height))) return;
-
-    m->traywin = win;
-    m->tx = wa->x;
-    m->tw = wa->width;
-    updatebarpos(m);
-    arrange(m);
-    XSelectInput(dpy, win, EnterWindowMask | FocusChangeMask | PropertyChangeMask | StructureNotifyMask);
-    XMoveResizeWindow(dpy, win, wa->x, wa->y, wa->width, wa->height);
-    XMapWindow(dpy, win);
-    XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend, (unsigned char *)&win, 1);
-}
-
 void mappingnotify(XEvent *e) {
     XMappingEvent *ev = &e->xmapping;
 
@@ -1307,23 +1289,6 @@ void scan(void) {
     }
 }
 
-void scantray(void) {
-    unsigned int num;
-    Window d1, d2, *wins = NULL;
-    XWindowAttributes wa;
-
-    if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
-        for (unsigned int i = 0; i < num; i++) {
-            if (wmclasscontains(wins[i], altbarclass, alttrayname)) {
-                if (!XGetWindowAttributes(dpy, wins[i], &wa)) break;
-                managetray(wins[i], &wa);
-            }
-        }
-    }
-
-    if (wins) XFree(wins);
-}
-
 void sendmon(Client *c, Monitor *m) {
     if (c->mon == m) return;
     unfocus(c, 1);
@@ -1395,14 +1360,6 @@ void setfullscreen(Client *c, int fullscreen) {
         resizeclient(c, c->x, c->y, c->w, c->h);
         arrange(c->mon);
     }
-}
-
-void setgaps(const Arg *arg) {
-    if ((arg->i == 0) || (selmon->gappx + arg->i < 0))
-        selmon->gappx = 0;
-    else
-        selmon->gappx += arg->i;
-    arrange(selmon);
 }
 
 /* arg > 1.0 will set mfact absolutely */
