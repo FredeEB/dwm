@@ -10,9 +10,9 @@ find_package(X11 COMPONENTS Xft Xinerama REQUIRED)
 
 # the dwm executable
 add_executable(dwm
-  dwm.c
-  drw.c
-  util.c)
+  dwm.cpp
+  drw.cpp
+  util.cpp)
 
 # link to libraries
 target_link_libraries(dwm

@@ -44,19 +44,24 @@
 #include "drw.h"
 #include "util.h"
 
+#include <string>
+#include <filesystem>
+#include <unordered_map>
+
 /* macros */
-#define BUTTONMASK (ButtonPressMask | ButtonReleaseMask)
 #define CLEANMASK(mask) \
     (mask & ~(numlockmask | LockMask) & (ShiftMask | ControlMask | Mod1Mask | Mod2Mask | Mod3Mask | Mod4Mask | Mod5Mask))
 #define INTERSECT(x, y, w, h, m) \
     (MAX(0, MIN((x) + (w), (m)->mx + (m)->mw) - MAX((x), (m)->mx)) * MAX(0, MIN((y) + (h), (m)->my + (m)->mh) - MAX((y), (m)->my)))
 #define ISVISIBLE(C) ((C->tags & C->mon->tagset[C->mon->seltags]))
 #define LENGTH(X) (sizeof X / sizeof X[0])
-#define MOUSEMASK (BUTTONMASK | PointerMotionMask)
 #define WIDTH(X) ((X)->w + 2 * (X)->bw)
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 #define TAGMASK ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
+
+constexpr auto BUTTONMASK = (ButtonPressMask | ButtonReleaseMask);
+constexpr auto MOUSEMASK = (BUTTONMASK | PointerMotionMask);
 
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
@@ -107,12 +112,12 @@ struct Client {
     Window win;
 };
 
-typedef struct {
+struct Key {
     unsigned int mod;
     KeySym keysym;
     void (*func)(const Arg *);
     const Arg arg;
-} Key;
+};
 
 struct Monitor {
     float mfact;
@@ -133,7 +138,7 @@ struct Monitor {
 };
 
 typedef struct {
-    const char *class;
+    const char *classname;
     const char *instance;
     const char *title;
     unsigned int tags;
@@ -225,7 +230,7 @@ static void updatewmhints(Client *c);
 static void view(const Arg *arg);
 static Client *wintoclient(Window w);
 static Monitor *wintomon(Window w);
-static int wmclasscontains(Window win, const char *class, const char *name);
+static int wmclasscontains(Window win, const char *classname, const char *name);
 static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
@@ -244,21 +249,24 @@ static int bh; /* bar geometry */
 static int lrpad;       /* sum of left and right padding for text */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
-static void (*handler[LASTEvent])(XEvent *) = {[ButtonPress] = buttonpress,
-                                               [ButtonRelease] = keyrelease,
-                                               [ClientMessage] = clientmessage,
-                                               [ConfigureRequest] = configurerequest,
-                                               [ConfigureNotify] = configurenotify,
-                                               [DestroyNotify] = destroynotify,
-                                               [EnterNotify] = enternotify,
-                                               [FocusIn] = focusin,
-                                               [KeyRelease] = keyrelease,
-                                               [KeyPress] = keypress,
-                                               [MappingNotify] = mappingnotify,
-                                               [MapRequest] = maprequest,
-                                               [MotionNotify] = motionnotify,
-                                               [PropertyNotify] = propertynotify,
-                                               [UnmapNotify] = unmapnotify};
+
+std::unordered_map<int, void(*)(XEvent*)> handler = {
+    {ButtonPress, buttonpress},
+    {ButtonRelease, keyrelease},
+    {ClientMessage, clientmessage},
+    {ConfigureRequest, configurerequest},
+    {ConfigureNotify, configurenotify},
+    {DestroyNotify, destroynotify},
+    {EnterNotify, enternotify},
+    {FocusIn, focusin},
+    {KeyRelease, keyrelease},
+    {KeyPress, keypress},
+    {MappingNotify, mappingnotify},
+    {MapRequest, maprequest},
+    {MotionNotify, motionnotify},
+    {PropertyNotify, propertynotify},
+    {UnmapNotify, unmapnotify}
+};
 static Atom wmatom[WMLast], netatom[NetLast];
 static int running = 1;
 static Cur *cursor[CurLast];
@@ -291,10 +299,12 @@ static const int nmaster = 1;     /* number of clients in master area */
 static const int resizehints = 1; /* 1 means respect size hints in tiled resizals */
 
 /* key definitions */
-#define MODKEY Mod4Mask
+constexpr auto ModKey = Mod4Mask;
 #define TAGKEYS(KEY, TAG)                                                                                  \
-    {MODKEY, KEY, comboview, {.ui = 1 << TAG}}, {MODKEY | ControlMask, KEY, toggleview, {.ui = 1 << TAG}}, \
-            {MODKEY | ShiftMask, KEY, combotag, {.ui = 1 << TAG}}, {MODKEY | ControlMask | ShiftMask, KEY, toggletag, {.ui = 1 << TAG}},
+    Key{ModKey, KEY, comboview, {.ui = 1 << TAG}}, \
+    Key{ModKey | ControlMask, KEY, toggleview, {.ui = 1 << TAG}}, \
+    Key{ModKey | ShiftMask, KEY, combotag, {.ui = 1 << TAG}},                                       \
+    Key{ModKey | ControlMask | ShiftMask, KEY, toggletag, {.ui = 1 << TAG}}
 
 /* commands */
 static const char *runnercmd[] = {"rofi", "-show", "run", NULL};
@@ -303,40 +313,46 @@ static const char *browsercmd[] = {"firefox", NULL};
 static const char *lockcmd[] = {"betterlockscreen", "-l", NULL};
 static const char *zealcmd[] = {"zeal", NULL};
 
-static Key keys[] = {
-        /* modifier                     key        function        argument */
-        {MODKEY, XK_d, spawn, {.v = runnercmd}},
-        {MODKEY, XK_Return, spawn, {.v = termcmd}},
-        {MODKEY, XK_b, spawn, {.v = browsercmd}},
-        {MODKEY | ShiftMask, XK_p, spawn, {.v = lockcmd}},
-        {MODKEY, XK_z, spawn, {.v = zealcmd}},
-        {MODKEY, XK_j, focusstack, {.i = +1}},
-        {MODKEY, XK_k, focusstack, {.i = -1}},
-        {MODKEY, XK_u, incnmaster, {.i = +1}},
-        {MODKEY, XK_i, incnmaster, {.i = -1}},
-        {MODKEY, XK_y, setmfact, {.f = -0.05}},
-        {MODKEY, XK_o, setmfact, {.f = +0.05}},
-        {MODKEY, XK_f, zoom, {0}},
-        {MODKEY | ShiftMask, XK_f, togglefullscr, {0}},
-        {MODKEY | ShiftMask, XK_q, killclient, {0}},
-        {MODKEY | ShiftMask, XK_space, togglefloating, {0}},
-        {MODKEY, XK_0, comboview, {.ui = ~0}},
-        {MODKEY | ShiftMask, XK_0, combotag, {.ui = ~0}},
-        {MODKEY, XK_l, focusmon, {.i = -1}},
-        {MODKEY, XK_h, focusmon, {.i = +1}},
-        {MODKEY | ShiftMask, XK_l, tagmon, {.i = -1}},
-        {MODKEY | ShiftMask, XK_h, tagmon, {.i = +1}},
-        TAGKEYS(XK_1, 0) TAGKEYS(XK_2, 1) TAGKEYS(XK_3, 2) TAGKEYS(XK_4, 3) TAGKEYS(XK_5, 4) TAGKEYS(XK_6, 5) TAGKEYS(XK_7, 6)
-                TAGKEYS(XK_8, 7) TAGKEYS(XK_9, 8){MODKEY | ShiftMask, XK_e, quit, {0}},
+constexpr std::array keys = {
+    /* modifier                     key        function        argument */
+    Key{ModKey, XK_d, spawn, {.v = runnercmd}},
+    Key{ModKey, XK_Return, spawn, {.v = termcmd}},
+    Key{ModKey, XK_b, spawn, {.v = browsercmd}},
+    Key{ModKey | ShiftMask, XK_p, spawn, {.v = lockcmd}},
+    Key{ModKey, XK_z, spawn, {.v = zealcmd}},
+    Key{ModKey, XK_j, focusstack, {.i = +1}},
+    Key{ModKey, XK_k, focusstack, {.i = -1}},
+    Key{ModKey, XK_u, incnmaster, {.i = +1}},
+    Key{ModKey, XK_i, incnmaster, {.i = -1}},
+    Key{ModKey, XK_y, setmfact, {.f = -0.05}},
+    Key{ModKey, XK_o, setmfact, {.f = +0.05}},
+    Key{ModKey, XK_f, zoom, {0}},
+    Key{ModKey | ShiftMask, XK_f, togglefullscr, {0}},
+    Key{ModKey | ShiftMask, XK_q, killclient, {0}},
+    Key{ModKey | ShiftMask, XK_space, togglefloating, {0}},
+    Key{ModKey, XK_l, focusmon, {.i = -1}},
+    Key{ModKey, XK_h, focusmon, {.i = +1}},
+    Key{ModKey | ShiftMask, XK_l, tagmon, {.i = -1}},
+    Key{ModKey | ShiftMask, XK_h, tagmon, {.i = +1}},
+    Key{ModKey | ShiftMask, XK_e, quit, {0}},
+    TAGKEYS(XK_1, 0), 
+    TAGKEYS(XK_2, 1),
+    TAGKEYS(XK_3, 2),
+    TAGKEYS(XK_4, 3),
+    TAGKEYS(XK_5, 4),
+    TAGKEYS(XK_6, 5),
+    TAGKEYS(XK_7, 6),
+    TAGKEYS(XK_8, 7),
+    TAGKEYS(XK_9, 8),
 };
 
 /* button definitions */
 /* click can be ClkTagBar, ClkStatusText, ClkWinTitle,
  * ClkClientWin, or ClkRootWin */
 static Button buttons[] = {
-        {ClkClientWin, MODKEY, Button1, movemouse, {0}},
-        {ClkClientWin, MODKEY, Button2, togglefloating, {0}},
-        {ClkClientWin, MODKEY, Button3, resizemouse, {0}},
+        {ClkClientWin, ModKey, Button1, movemouse, {0}},
+        {ClkClientWin, ModKey, Button2, togglefloating, {0}},
+        {ClkClientWin, ModKey, Button3, resizemouse, {0}},
 };
 // --------------------------------- CONFIG END --------------------------
 
@@ -377,7 +393,7 @@ void comboview(const Arg *arg) {
 }
 
 void applyrules(Client *c) {
-    const char *class, *instance;
+    const char *classname, *instance;
     unsigned int i;
     const Rule *r;
     Monitor *m;
@@ -387,12 +403,12 @@ void applyrules(Client *c) {
     c->isfloating = 0;
     c->tags = 0;
     XGetClassHint(dpy, c->win, &ch);
-    class = ch.res_class ? ch.res_class : broken;
+    classname = ch.res_class ? ch.res_class : broken;
     instance = ch.res_name ? ch.res_name : broken;
 
     for (i = 0; i < LENGTH(rules); i++) {
         r = &rules[i];
-        if ((!r->title || strstr(c->name, r->title)) && (!r->class || strstr(class, r->class))
+        if ((!r->title || strstr(c->name, r->title)) && (!r->classname || strstr(classname, r->classname))
             && (!r->instance || strstr(instance, r->instance))) {
             c->isfloating = r->isfloating;
             c->tags |= r->tags;
@@ -527,7 +543,7 @@ void checkotherwm() {
 }
 
 void cleanup() {
-    Arg a = {.ui = ~0};
+    Arg a = {.ui = std::numeric_limits<unsigned int>::max()};
     Monitor *m;
     size_t i;
 
@@ -662,7 +678,7 @@ void configurerequest(XEvent *e) {
 Monitor *createmon() {
     Monitor *m;
 
-    m = ecalloc(1, sizeof(Monitor));
+    m = new Monitor;
     m->tagset[0] = m->tagset[1] = 1;
     m->mfact = mfact;
     m->nmaster = nmaster;
@@ -896,17 +912,14 @@ static int isuniquegeom(XineramaScreenInfo *unique, size_t n, XineramaScreenInfo
 }
 
 void keypress(XEvent *e) {
-    unsigned int i;
-    KeySym keysym;
-    XKeyEvent *ev;
 
-    ev = &e->xkey;
-    keysym = XKeycodeToKeysym(dpy, (KeyCode)ev->keycode, 0);
-    for (i = 0; i < LENGTH(keys); i++)
+    auto ev = &e->xkey;
+    auto keysym = XKeycodeToKeysym(dpy, (KeyCode)ev->keycode, 0);
+    for (auto i = 0; i < LENGTH(keys); i++)
         if (keysym == keys[i].keysym && CLEANMASK(keys[i].mod) == CLEANMASK(ev->state) && keys[i].func) keys[i].func(&(keys[i].arg));
 }
 
-void killclient(const Arg *arg) {
+void killclient(const Arg * ) {
     if (!selmon->sel) return;
     if (!sendevent(selmon->sel, wmatom[WMDelete])) {
         XGrabServer(dpy);
@@ -924,7 +937,7 @@ void manage(Window w, XWindowAttributes *wa) {
     Window trans = None;
     XWindowChanges wc;
 
-    c = ecalloc(1, sizeof(Client));
+    c = (Client*)ecalloc(1, sizeof(Client));
     c->win = w;
     /* geometry */
     c->x = c->oldx = wa->x;
@@ -1222,31 +1235,17 @@ void run() {
 }
 
 void runautostart() {
-    char const *system_config = "/etc/dwm/autostart.sh";
+    namespace fs = std::filesystem;
 
-    if (access(system_config, F_OK) != -1) system(system_config);
+    auto const system_config = fs::path("/etc/dwm/autostart.sh");
+    system(system_config.c_str());
 
-    char *home = getenv("HOME");
-    char const *user_config_suffix = "/.config/dwm";
-    char *const user_config = calloc(strlen(home) + strlen(user_config_suffix) + 256, sizeof(char));
-    sprintf(user_config, "%s%s", home, user_config_suffix);
-
-    DIR *d;
-    struct dirent *dir_file;
-
-    d = opendir(user_config);
-
-    if (d) {
-        while ((dir_file = readdir(d)) != NULL) {
-            if (dir_file->d_type == DT_REG) {
-                sprintf(user_config, "%s%s/%s", home, user_config_suffix, dir_file->d_name);
-                system(user_config);
-            }
-        }
-        closedir(d);
+    auto const user_config_dir = fs::path(getenv("HOME")) / ".config/dwm";
+    fs::directory_iterator dir(user_config_dir);
+    for (auto script : dir) {
+        if (script.is_regular_file())
+            system(script.path().c_str());
     }
-
-    free(user_config);
 }
 
 void scan() {
@@ -1620,7 +1619,7 @@ int updategeom() {
         for (n = 0, m = mons; m; m = m->next, n++)
             ;
         /* only consider unique geometries as separate screens */
-        unique = ecalloc(nn, sizeof(XineramaScreenInfo));
+        unique = (XineramaScreenInfo*)ecalloc(nn, sizeof(XineramaScreenInfo));
         for (i = 0, j = 0; i < nn; i++)
             if (isuniquegeom(unique, j, &info[i])) memcpy(&unique[j++], &info[i], sizeof(XineramaScreenInfo));
         XFree(info);
@@ -1791,13 +1790,13 @@ Monitor *wintomon(Window w) {
     return selmon;
 }
 
-int wmclasscontains(Window win, const char *class, const char *name) {
+int wmclasscontains(Window win, const char *classname, const char *name) {
     XClassHint ch = {NULL, NULL};
     int res = 1;
 
     if (XGetClassHint(dpy, win, &ch)) {
         if (ch.res_name && strstr(ch.res_name, name) == NULL) res = 0;
-        if (ch.res_class && strstr(ch.res_class, class) == NULL) res = 0;
+        if (ch.res_class && strstr(ch.res_class, classname) == NULL) res = 0;
     } else
         res = 0;
 
