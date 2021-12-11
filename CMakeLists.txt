@@ -10,9 +10,9 @@ find_package(X11 COMPONENTS Xft Xinerama REQUIRED)
 
 # the dwm executable
 add_executable(dwm
-  dwm.c
-  drw.c
-  util.c)
+  dwm.cpp
+  drw.cpp
+  util.cpp)
 
 # link to libraries
 target_link_libraries(dwm
@@ -34,5 +34,8 @@ target_compile_features(dwm PUBLIC cxx_std_20 c_std_17)
 target_compile_definitions(dwm PUBLIC "-DVERSION=\"${VERSION}\"")
 
 install(TARGETS dwm)
-install(FILES dwm.desktop DESTINATION /usr/share/xsessions)
-install(PROGRAMS autostart.sh DESTINATION /etc/dwm)
+install(PROGRAMS scripts/autostart.sh DESTINATION /etc/dwm)
+install(FILES scripts/dwm.desktop DESTINATION /usr/share/xsessions)
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    install(FILES scripts/dwm-debug.desktop DESTINATION /usr/share/xsessions)
+endif()

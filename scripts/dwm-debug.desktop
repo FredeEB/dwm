@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=dwm
+Comment=Dynamic Window Manager
+Exec=gdbserver 0.0.0.0:5555 dwm
+Type=Application
