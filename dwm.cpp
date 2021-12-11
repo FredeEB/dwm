@@ -364,7 +364,7 @@ struct NumTags {
 /* function implementations */
 static int combo = 0;
 
-void keyrelease(XEvent *e) { combo = 0; }
+void keyrelease(XEvent *) { combo = 0; }
 
 void combotag(const Arg *arg) {
     if (selmon->sel && arg->ui & TAGMASK) {
@@ -1429,7 +1429,7 @@ void showhide(Client *c) {
     }
 }
 
-void sigchld(int unused) {
+void sigchld(int) {
     if (signal(SIGCHLD, sigchld) == SIG_ERR) die("can't install SIGCHLD handler:");
     while (0 < waitpid(-1, NULL, WNOHANG))
         ;
@@ -1483,7 +1483,7 @@ void tile(Monitor *m) {
         }
 }
 
-void togglefloating(const Arg *arg) {
+void togglefloating(const Arg *) {
     if (!selmon->sel) return;
     if (selmon->sel->isfullscreen) /* no support for fullscreen windows */
         return;
@@ -1492,7 +1492,7 @@ void togglefloating(const Arg *arg) {
     arrange(selmon);
 }
 
-void togglefullscr(const Arg *arg) {
+void togglefullscr(const Arg *) {
     if (selmon->sel) setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
 }
 
@@ -1823,16 +1823,16 @@ int xerror(Display *dpy, XErrorEvent *ee) {
     return xerrorxlib(dpy, ee); /* may call exit */
 }
 
-int xerrordummy(Display *dpy, XErrorEvent *ee) { return 0; }
+int xerrordummy(Display *, XErrorEvent *) { return 0; }
 
 /* Startup Error handler to check if another window manager
  * is already running. */
-int xerrorstart(Display *dpy, XErrorEvent *ee) {
+int xerrorstart(Display *, XErrorEvent *) {
     die("dwm: another window manager is already running");
     return -1;
 }
 
-void zoom(const Arg *arg) {
+void zoom(const Arg *) {
     Client *c = selmon->sel;
 
     if (selmon->sel && selmon->sel->isfloating) return;
