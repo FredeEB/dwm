@@ -34,5 +34,5 @@ target_compile_features(dwm PUBLIC cxx_std_20 c_std_17)
 target_compile_definitions(dwm PUBLIC "-DVERSION=\"${VERSION}\"")
 
 install(TARGETS dwm)
-install(FILES dwm.desktop DESTINATION /usr/share/xsessions)
-install(PROGRAMS autostart.sh DESTINATION /etc/dwm)
+install(FILES scritps/dwm.desktop DESTINATION /usr/share/xsessions)
+install(PROGRAMS scripts/autostart.sh DESTINATION /etc/dwm)
